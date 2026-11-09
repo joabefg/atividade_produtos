@@ -1,5 +1,7 @@
 import sqlite3
 
+CAMINHO_BANCO = "produtos.db"
+
 def conectar_banco(caminho):
     conexao = sqlite3.connect(caminho)
     conexao.row_factory = sqlite3.Row
