@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Cadastrar produto | Estoque</title>
+</head>
+<body>
+	<header>
+		<a href="/listar">Estoque</a>
+		<nav aria-label="Navegação principal">
+			<a href="/listar">Produtos</a>
+			<a href="/cadastrar">Cadastrar</a>
+		</nav>
+	</header>
+	<main>
+		<a href="/listar">Voltar para produtos</a>
+		<h1 id="page-title">Cadastrar produto</h1>
+		<p id="status" role="status"></p>
+		<form id="product-form">
+			<label>Nome do produto *
+				<input name="nome" type="text" maxlength="100" required placeholder="Ex.: Caderno universitário">
+			</label>
+			<label>Categoria
+				<input name="categoria" type="text" maxlength="50" placeholder="Ex.: Papelaria">
+			</label>
+			<label>Preço (R$) *
+				<input name="preco" type="number" min="0" step="0.01" required placeholder="0,00">
+			</label>
+			<label>Quantidade *
+				<input name="quantidade" type="number" min="0" step="1" required placeholder="0">
+			</label>
+			<label>Descrição
+				<textarea name="descricao" rows="4" placeholder="Detalhes do produto (opcional)"></textarea>
+			</label>
+			<button id="save-button" type="submit">Salvar produto</button>
+		</form>
+	</main>
+	<script>
+		const form = document.getElementById('product-form');
+		const statusMessage = document.getElementById('status');
+		const productId = new URLSearchParams(window.location.search).get('id');
+		const saveButton = document.getElementById('save-button');
+
+		async function loadProduct() {
+			if (!productId) return;
+			const response = await fetch(`/api/produtos/${encodeURIComponent(productId)}`);
+			if (!response.ok) {
+				statusMessage.textContent = 'Produto não encontrado.';
+				form.hidden = true;
+				return;
+			}
+			const product = await response.json();
+			for (const field of form.elements) {
+				if (field.name in product) field.value = product[field.name] ?? '';
+			}
+			document.getElementById('page-title').textContent = 'Editar produto';
+			saveButton.textContent = 'Salvar alterações';
+		}
+
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			const data = Object.fromEntries(new FormData(form));
+			data.preco = Number(data.preco);
+			data.quantidade = Number(data.quantidade);
+			const response = await fetch(productId ? `/editar/${encodeURIComponent(productId)}` : '/cadastrar', {
+				method: productId ? 'PUT' : 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(data)
+			});
+			const result = await response.json();
+			if (!response.ok) {
+				statusMessage.textContent = result.erro || 'Não foi possível salvar o produto.';
+				return;
+			}
+			window.location.href = '/listar';
+		});
+
+		loadProduct();
+	</script>
+</body>
+</html>

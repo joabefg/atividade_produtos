@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Produtos | Estoque</title>
+</head>
+<body>
+	<header>
+		<a href="/listar">Estoque</a>
+		<nav aria-label="Navegação principal">
+			<a href="/listar">Produtos</a>
+			<a href="/cadastrar">Cadastrar</a>
+		</nav>
+	</header>
+	<main>
+		<h1>Produtos</h1>
+		<p id="product-count">Carregando produtos...</p>
+		<p id="status" role="status"></p>
+		<p id="empty-message" hidden>Nenhum produto cadastrado.</p>
+		<table id="product-table" hidden>
+			<thead>
+				<tr><th>Nome</th><th>Descrição</th><th>Categoria</th><th>Preço</th><th>Quantidade</th><th>Ações</th></tr>
+			</thead>
+			<tbody id="product-list"></tbody>
+		</table>
+	</main>
+	<script>
+		const productList = document.getElementById('product-list');
+		const productTable = document.getElementById('product-table');
+		const emptyMessage = document.getElementById('empty-message');
+		const productCount = document.getElementById('product-count');
+		const statusMessage = document.getElementById('status');
+		const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+		async function loadProducts() {
+			statusMessage.textContent = '';
+			try {
+				const response = await fetch('/listar?formato=json');
+				if (!response.ok) throw new Error('Não foi possível carregar os produtos.');
+				const products = await response.json();
+				productList.replaceChildren();
+				productCount.textContent = `${products.length} produto(s) cadastrado(s)`;
+				productTable.hidden = products.length === 0;
+				emptyMessage.hidden = products.length !== 0;
+
+				for (const product of products) {
+					const row = document.createElement('tr');
+					for (const value of [product.nome, product.descricao || '', product.categoria || 'Sem categoria', currency.format(product.preco), `${product.quantidade} un.`]) {
+						const cell = document.createElement('td');
+						cell.textContent = value;
+						row.appendChild(cell);
+					}
+
+					const actions = document.createElement('td');
+					const editLink = document.createElement('a');
+					editLink.href = `/cadastrar?id=${encodeURIComponent(product.id)}`;
+					editLink.textContent = 'Editar';
+					const deleteButton = document.createElement('button');
+					deleteButton.type = 'button';
+					deleteButton.textContent = 'Excluir';
+					deleteButton.addEventListener('click', () => deleteProduct(product.id));
+					actions.append(editLink, document.createTextNode(' '), deleteButton);
+					row.appendChild(actions);
+					productList.appendChild(row);
+				}
+			} catch (error) {
+				productCount.textContent = '';
+				statusMessage.textContent = error.message;
+			}
+		}
+
+		async function deleteProduct(id) {
+			if (!window.confirm('Deseja excluir este produto?')) return;
+			const response = await fetch('/apagar', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ id })
+			});
+			if (!response.ok) {
+				statusMessage.textContent = 'Não foi possível excluir o produto.';
+				return;
+			}
+			loadProducts();
+		}
+
+		loadProducts();
+	</script>
+</body>
+</html>
